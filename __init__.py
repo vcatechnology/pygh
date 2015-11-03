@@ -221,6 +221,15 @@ def execute_command(cmd, error_message = 'Failed to run external program', expec
         raise ExecuteCommandError(error_message, cmd, p.returncode, out, err)
     return (p.returncode, out, err)
 
+def get_milestones(repo, token, logger = EmptyLogger()):
+    logger.debug('Retrieving milestones for %s' % repo)
+    r = requests.get('https://api.github.com/repos/%s/milestones' % repo, params = {
+        'access_token': token,
+    })
+    if r.status_code != 200:
+        raise ReleaseError('Failed to retrieve github milestones from %s: %s' % (repo, r.json()['message']))
+    return r.json()
+
 def get_git_tag_version(path, git_executable = find_exe_in_path('git'), logger = EmptyLogger()):
     if isinstance(git_executable, list):
         git_executable = git_executable[0]
