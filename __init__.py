@@ -251,7 +251,7 @@ def get_git_tag_version(path, git_executable = find_exe_in_path('git'), logger =
 
     # Parse the tag
     re_tag = re.compile('^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9]+-g[a-f0-9]+)?')
-    matches = re_tag.match(tag)
+    matches = re_tag.match(out)
     major = int(matches.group(1))
     minor = int(matches.group(2))
     revision = int(matches.group(3))
