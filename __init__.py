@@ -494,7 +494,7 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
 
     milestones = get_milestones(repo = repo, token = token, logger = logger)
     try:
-        milestone = [m for m in milestones if m['title'] == ('v%s' % current_version)][0]
+        milestone = [m for m in milestones if m['title'] == ('v%s' % current_version) and m['state'] == 'open'][0]
         open_issues = milestone['open_issues']
         if open_issues:
             raise ReleaseError('The v%s milestone has %d open issues' % (current_version, open_issues))
