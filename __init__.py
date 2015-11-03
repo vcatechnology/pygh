@@ -353,7 +353,6 @@ def get_closed_issues(repo, token = os.environ.get('GITHUB_TOKEN', None), since 
     if r.status_code != 200:
         raise ReleaseError('Failed to retrieve github issues from %s: %s' % (repo, r.json()['message']))
     issues = r.json()
-    issues = [i for i in issues if not i.get('pull_request', None)]
     logger.debug('Retrieved %i closed issues for %s' % (len(issues), repo))
     return issues
 
