@@ -264,8 +264,9 @@ def close_milestone(number, repo, token, logger=EmptyLogger()):
         message = json['message']
         errors = json.get('errors', [])
         for e in errors:
-            message += '\n  - %s: %s: %s' % (e['resource'], e['field'],
-                                             e['code'])
+            message += '\n  - %s: %s: %s' % (e.get('resource', 'unknown'),
+                                             e.get('field', 'unknown'),
+                                             e.get('code', 'unknown'))
         raise ReleaseError('Failed to close github milestone #%d: %s' %
                            (number, message))
     logger.info('Closed milestone #%d' % number)
@@ -568,8 +569,9 @@ def create_release(repo,
         message = json['message']
         errors = json.get('errors', [])
         for e in errors:
-            message += '\n  - %s: %s: %s' % (e['resource'], e['field'],
-                                             e['code'])
+            message += '\n  - %s: %s: %s' % (e.get('resource', 'unknown'),
+                                             e.get('field', 'unknown'),
+                                             e.get('code', 'unknown'))
         raise ReleaseError('Failed to create github release %s: %s' %
                            (repo, message))
     logger.info('Created GitHub release')
