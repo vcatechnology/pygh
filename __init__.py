@@ -226,10 +226,16 @@ def close_milestone(number, repo, token, logger = EmptyLogger()):
     number = int(number)
     r = requests.patch('https://api.github.com/repos/%s/milestones/%d' % (repo, number), params = {
         'access_token': token,
-        'state': 'close',
+    }, json = {
+        'state': 'closed',
     })
     if r.status_code != 200:
-        raise ReleaseError('Failed to close github milestone #%d: %s' % (number, r.json()['message']))
+        json = r.json()
+        message = json['message']
+        errors = json.get('errors', [])
+        for e in errors:
+            message += '\n  - %s: %s: %s' % (e['resource'], e['field'], e['code'])
+        raise ReleaseError('Failed to close github milestone #%d: %s' % (number, message))
     logger.info('Closed milestone #%d' % number)
     return r.json()
 
