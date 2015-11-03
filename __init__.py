@@ -439,9 +439,6 @@ def create_git_version_tag(version, message = None, path = os.getcwd(), git_exec
     execute_command(cmd, 'Failed to create version tag %s' % version, cwd = cwd)
     logger.info('Tagged %s' % version)
 
-def default_hook(*k, **kw):
-    logger.debug('Running default hook')
-
 def create_release(repo, version, description, token = os.environ.get('GITHUB_TOKEN', None),
         files = [], path = os.getcwd(), git_executable = find_exe_in_path('git'), logger = EmptyLogger()):
     if isinstance(git_executable, list):
@@ -468,11 +465,7 @@ def create_release(repo, version, description, token = os.environ.get('GITHUB_TO
 def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in_path('git'),
         token = os.environ.get('GITHUB_TOKEN', None), repo = None, date = datetime.utcnow(),
         description = None, changelog = 'CHANGELOG.md', template = changelog_template,
-        logger = EmptyLogger(), hooks = {
-            'changelog': default_hook,
-            'version': default_hook,
-            'push': default_hook,
-        }):
+        logger = EmptyLogger(), hooks = {}):
     '''
     Performs the release of a repository on GitHub.
     '''
@@ -515,6 +508,8 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
     changelog_data = create_changelog(description = description, repo = repo, date = date, token = token,
         current_version = current_version, previous_version = previous_version, template = template,
         since = previous_date, logger = logger, milestone = milestone)
+
+    changelog_data = hooks.get('changelog', lambda d: d)(changelog_data)
 
     write_changelog(path = os.path.join(path, changelog), changelog = changelog_data, logger = logger)
 
