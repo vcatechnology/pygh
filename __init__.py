@@ -371,6 +371,8 @@ def create_changelog(current_version, previous_version, repo, milestone = None,
     logger.debug('Creating changelog for %s from %s' % (current_version, repo))
     description = description or 'The v%s release of %s' % (current_version, repo.split('/')[1])
     issues = get_closed_issues(repo = repo, token = token, since = since, logger = logger)
+    if milestone:
+        milestone['html_url'] = 'https://github.com/%s/issues?q=milestone%%3Av%s+is%%3Aall' % (repo, current_version)
     data = {
         'version': {
             'from': str(previous_version) if previous_version > (0, 0, 0) else None,
