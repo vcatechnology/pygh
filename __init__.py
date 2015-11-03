@@ -308,32 +308,35 @@ def get_git_version(git_executable = find_exe_in_path('git'), logger = EmptyLogg
 
 changelog_template = \
     '## [v{{version.to}}](https://github.com/{{repo}}/tree/v{{version.to}}) ({{date}})\n' \
-    '{{#version.from}}\n' \
-    '\n' \
-    '[Full Changelog](https://github.com/{{repo}}/compare/v{{version.from}}...v{{version.to}})\n' \
-    '{{/version.from}}\n' \
-    '{{#milestone}}\n' \
-    '\n' \
-    '[Milestone]({{html_url}})\n' \
+    '{{#version.from}}' \
+    '[Full Changelog](https://github.com/{{repo}}/compare/v{{version.from}}...v{{version.to}})' \
+    '{{/version.from}}' \
+    '{{#milestone}}' \
+    '{{#version.from}} {{/version.from}}' \
+    '[Milestone]({{html_url}})' \
     '{{/milestone}}\n' \
     '\n' \
     '{{description}}\n' \
-    '{{#issues}}\n' \
     '\n' \
     '**Closed issues:**\n' \
-    '{{/issues}}\n' \
     '{{#issues}}\n' \
     '\n' \
     '  - {{title}} [\#{{number}}]({{html_url}})\n' \
     '{{/issues}}\n' \
-    '{{#pullrequests}}\n' \
+    '{{^issues}}\n' \
+    '\n' \
+    '_None_\n' \
+    '{{/issues}}\n' \
     '\n' \
     '**Merged pull requests:**\n' \
-    '{{/pullrequests}}' \
     '{{#pullrequests}}\n' \
     '\n' \
     '  - {{title}} [\#{{number}}]({{pull_request.html_url}})\n' \
     '{{/pullrequests}}\n' \
+    '{{^pullrequests}}\n' \
+    '\n' \
+    '_None_\n' \
+    '{{/pullrequests}}\n'
 
 def get_closed_issues(repo, token = os.environ.get('GITHUB_TOKEN', None), since = None,
         logger = EmptyLogger()):
