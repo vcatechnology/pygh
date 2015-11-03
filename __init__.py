@@ -282,7 +282,7 @@ def get_git_version(git_executable = find_exe_in_path('git'), logger = EmptyLogg
     logger.debug('Getting git version')
     _, out, _ = execute_command([git_executable, '--version'])
     git_version = Version(out.replace('git version ', ''))
-    logger.info('Using git %s' % git_version)
+    logger.debug('Using git %s' % git_version)
     return git_version
 
 changelog_template = \
