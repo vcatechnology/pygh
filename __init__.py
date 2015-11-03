@@ -296,11 +296,15 @@ def get_git_version(git_executable = find_exe_in_path('git'), logger = EmptyLogg
 
 changelog_template = \
     '## [v{{version.to}}](https://github.com/{{repo}}/tree/v{{version.to}}) ({{date}})\n' \
-    '\n' \
     '{{#version.from}}\n' \
-    '[Full Changelog](https://github.com/{{repo}}/compare/v{{version.from}}...v{{version.to}})\n' \
     '\n' \
+    '[Full Changelog](https://github.com/{{repo}}/compare/v{{version.from}}...v{{version.to}})\n' \
     '{{/version.from}}\n' \
+    '{{#milestone}}\n' \
+    '\n' \
+    '[Milestone]({{html_url}})\n' \
+    '{{/milestone}}\n' \
+    '\n' \
     '{{description}}\n' \
     '{{#issues}}\n' \
     '\n' \
@@ -341,7 +345,7 @@ def get_closed_issues(repo, token = os.environ.get('GITHUB_TOKEN', None), since 
     logger.debug('Retrieved %i closed issues for %s' % (len(issues), repo))
     return issues
 
-def create_changelog(current_version, previous_version, repo,
+def create_changelog(current_version, previous_version, repo, milestone = None,
         token = os.environ.get('GITHUB_TOKEN', None), description = None, since = None,
         date = datetime.utcnow(), template = changelog_template, logger = EmptyLogger()):
     logger.debug('Creating changelog for %s from %s' % (current_version, repo))
@@ -352,6 +356,7 @@ def create_changelog(current_version, previous_version, repo,
             'from': str(previous_version) if previous_version > (0, 0, 0) else None,
             'to': str(current_version),
         },
+        'milestone': milestone,
         'date': date.isoformat()[:10],
         'repo': repo,
         'description': description,
@@ -498,7 +503,7 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
         previous_date = None
     changelog_data = create_changelog(description = description, repo = repo, date = date, token = token,
         current_version = current_version, previous_version = previous_version, template = template,
-        since = previous_date, logger = logger)
+        since = previous_date, logger = logger, milestone = milestone)
 
     write_changelog(path = os.path.join(path, changelog), changelog = changelog_data, logger = logger)
 
