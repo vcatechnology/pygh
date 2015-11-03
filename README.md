@@ -1,7 +1,11 @@
 pygh
 ====
 
-A set of GitHub related scripts that can perform certain useful tasks.
+A set of GitHub related scripts that can perform certain useful tasks:
+
+  - Release:
+    - The scripts can perform a release of a GitHub project creating the
+      necessary updated changelog and the release data on GitHub
 
 Installation
 ------------
