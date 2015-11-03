@@ -221,6 +221,18 @@ def execute_command(cmd, error_message = 'Failed to run external program', expec
         raise ExecuteCommandError(error_message, cmd, p.returncode, out, err)
     return (p.returncode, out, err)
 
+def close_milestone(number, repo, token, logger = EmptyLogger()):
+    logger.debug('Closing milestone #%d for %s' % (number, repo))
+    number = int(number)
+    r = requests.patch('https://api.github.com/repos/%s/milestones/%d' % (repo, number), params = {
+        'access_token': token,
+        'state': 'close',
+    })
+    if r.status_code != 200:
+        raise ReleaseError('Failed to close github milestone #%d: %s' % (repo, r.json()['message']))
+    logger.info('Closed milestone #%d' % number)
+    return r.json()
+
 def get_milestones(repo, token, logger = EmptyLogger()):
     logger.debug('Retrieving milestones for %s' % repo)
     r = requests.get('https://api.github.com/repos/%s/milestones' % repo, params = {
@@ -529,5 +541,8 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
 
     create_release(path = path, version = current_version, description = changelog_data,
         git_executable = git_executable, repo = repo, logger = logger, files = files, token = token)
+
+    if milestone:
+        close_milestone(number = milestone['number'], repo = repo, token = token, logger = logger)
 
     logger.info('Released %s' % current_version)
