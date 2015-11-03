@@ -457,6 +457,8 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
     logger.debug('Starting %r release' % category)
 
     git_version = get_git_version(git_executable = git_executable, logger = logger)
+    if git_version < (1, 0, 0):
+        raise ReleaseError('The version of git is too old %s' % git_version)
 
     previous_version = get_git_tag_version(path = path, git_executable = git_executable, logger = logger)
 
