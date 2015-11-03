@@ -348,7 +348,7 @@ def get_closed_issues(repo, token = os.environ.get('GITHUB_TOKEN', None), since 
     }
     if since:
         since = since.astimezone(timezone.utc)
-        params['since'] = since.isoformat()[:20] + 'Z'
+        params['since'] = since.isoformat()[:19] + 'Z'
     r = requests.get('https://api.github.com/repos/%s/issues' % repo, params = params)
     if r.status_code != 200:
         raise ReleaseError('Failed to retrieve github issues from %s: %s' % (repo, r.json()['message']))
