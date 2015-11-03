@@ -483,6 +483,15 @@ def release(category = 'patch', path = os.getcwd(), git_executable = find_exe_in
     repo = repo or get_repo(path = path, git_executable = git_executable)
     description = description or 'The v%s release of %s' % (current_version, repo.split('/')[1])
 
+    milestones = get_milestones(repo = repo, token = token, logger = logger)
+    try:
+        milestone = [m for m in milestones if m['title'] == ('v%s' % current_version)][0]
+        open_issues = milestone['open_issues']
+        if open_issues:
+            raise ReleaseError('The v%s milestone has %d open issues' % (current_version, open_issues))
+    except IndexError:
+        milestone = None
+
     try:
         previous_date = get_tag_date('v%s' % previous_version, path = path, git_executable = git_executable)
     except ExecuteCommandError:
