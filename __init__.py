@@ -229,7 +229,7 @@ def close_milestone(number, repo, token, logger = EmptyLogger()):
         'state': 'close',
     })
     if r.status_code != 200:
-        raise ReleaseError('Failed to close github milestone #%d: %s' % (repo, r.json()['message']))
+        raise ReleaseError('Failed to close github milestone #%d: %s' % (number, r.json()['message']))
     logger.info('Closed milestone #%d' % number)
     return r.json()
 
