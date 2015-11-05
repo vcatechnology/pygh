@@ -73,6 +73,9 @@ def main():
     except pygh.ReleaseError as e:
         sys.stderr.write('Failed to release: %s\n' % e)
         sys.exit(1)
+    except pygh.HttpApiError as e:
+        sys.stderr.write('Failed to perform HTTP API request: %s\n' % e)
+        sys.exit(1)
     except pygh.ExecuteCommandError as e:
         sys.stderr.write('%s: %s\n%s' % (e.message, ' '.join(e.cmd), e.err))
         sys.exit(1)
