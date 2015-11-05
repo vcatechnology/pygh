@@ -857,10 +857,22 @@ def create_release(repo,
                    token=os.environ.get('GITHUB_TOKEN', None),
                    files=[],
                    path=os.getcwd(),
-                   git_executable=find_exe_in_path('git'),
                    logger=EmptyLogger()):
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
+    '''
+    Creates a GitHub release that attaches the changelog to the tagged version
+    on GitHub.
+
+    :param str repo: the GitHub repository to work against, e.g.
+        :code:`vcatechnology/pygh`
+    :param Version version: the version to be released
+    :param str description: the description of the release, such as major
+        features implemented
+    :param str token: the GitHub API token to use for the request
+    :param list files: the files to be attached to the release
+    :param str path: the location of the local github repository
+    :param Logger logger: the logging class to use for providing status updates
+    :raises HttpApiError: if a GitHub API request fails
+    '''
     if not isinstance(version, Version):
         raise ValueError('must provide a version class')
     logger.debug('Creating github release %s' % version)
@@ -892,6 +904,50 @@ def release(category='patch',
             template=changelog_template,
             logger=EmptyLogger(),
             hooks={}):
+    '''
+    Performs a release of a GitHub local repository. This automatically does the
+    following steps:
+
+        - Retrieves the git executable version and checks it is new enough
+        - Gets the previous semantic version tag on the repository
+        - Bumps the version according to the :code:`category`
+        - Checks that no milestone is open in GitHub that corresponds to the
+            version number and has open issues
+        - Automatically creates a changelog with the :code:`description` and
+            all closed issues and pull requests since the last release
+        - Writes, or updates, the :code:`CHANGELOG.md` file
+        - Writes the newly released version number to `VERSION`
+        - Commits the changes and creates and annotated tag of the repository
+        - Pushes the new commits and tag to GitHub
+        - Creates a GitHub release attaching the changelog to the release tag
+        - Closes the milestone that is associated with the version
+
+    The following is sample output of a release of the :code:`pygh` project::
+
+        TODO!
+
+    :param str category: Must be one of :code:`major`, :code:`minor` or
+        :code:`patch`
+    :param str path: the path to the local repository to release
+    :param list git_executable: the :code:`git` executable to use for the
+        inspection
+    :param str token: the GitHub API token to use for GitHub API requests
+    :param str repo: the GitHub repository to close the milestone on,
+        e.g. :code:`vcatechnology/pygh`. If set to :code:`None` it will be
+        automatically detected from the :code:`origin` remote
+    :param datetime date: the date the release occurred
+    :param str description: the main description for the release,this will be
+        included in the changelog, so should include major features and changes
+        that have occurred since the last release
+    :param str changelog: the name of the changelog file to write or update
+    :param str version: the name of the version file to write or update
+    :param str template: the mustache template to use for creating the changelog
+    :param Logger logger: the logging class to use for providing status updates
+    :param dict hooks: a set of function hooks that will be invoked as the
+        release function runs:
+
+            - :code:`changelog`: ran when the changelog has been generated
+    '''
     if isinstance(git_executable, list):
         git_executable = git_executable[0]
 
@@ -984,7 +1040,6 @@ def release(category='patch',
     create_release(path=path,
                    version=current_version,
                    description=changelog_data,
-                   git_executable=git_executable,
                    repo=repo,
                    logger=logger,
                    files=files,
