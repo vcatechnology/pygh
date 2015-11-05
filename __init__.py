@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+'''
+A set of Python functions that perform operations in GitHub.
+
+.. moduleauthor:: VCA Technology
+
+'''
 
 import re
 import os
@@ -26,6 +32,12 @@ except ImportError:
 
 
 class ReleaseError(Exception):
+    '''
+    An exception that is thrown when a release fails
+
+    :param str message: A message that explains why the release has failed
+    '''
+
     def __init__(self, message):
         self.message = message
 
@@ -34,6 +46,18 @@ class ReleaseError(Exception):
 
 
 class ExecuteCommandError(Exception):
+    '''
+    An exception that is thrown when a release fails
+
+    :param str  message:  A message that explains why the command failed to be
+                          executed
+    :param list cmd:      The command that was attempted to be executed
+    :param int  code:     The return code of the execution
+    :param str  out:      The messages that were print to :code:`stdout` when
+                          the failed command ran
+    :param str  err:      The :code:`stderr` output from the failed execution
+    '''
+
     def __init__(self, message, cmd, code, out, err):
         self.message = message
         self.cmd = cmd
@@ -46,47 +70,41 @@ class ExecuteCommandError(Exception):
 
 
 class EmptyLogger(object):
-    '''Provides an implementation of an empty logging function'''
+    'A logger that swallows all messages to provide silent execution'
 
     def debug(self, *k, **kw):
+        '''
+        Messages that are more in depth and are shown usually when the scripts
+        are ran in :code:`--verbose` mode
+        '''
         pass
 
     def info(self, *k, **kw):
+        '''
+        Informational messages that can provide output that will be useful to
+        the user
+        '''
         pass
 
     def warn(self, *k, **kw):
+        'Logs warnings that provide non-error message to the user'
         pass
 
     def error(self, *k, **kw):
+        'Errors that have occured but do not effect the running of the script'
         pass
 
     def critical(self, *k, **kw):
+        'Message that are output before the script must terminate'
         pass
 
     def setLevel(self, *k, **kw):
+        'Sets the level of the logger to show a certain level of messages'
         pass
 
 
 class Version(object):
-    '''Represents a version number'''
-
     def __init__(self, *k, **kw):
-        '''
-        A version number can be instantiate with:
-
-            - a dot-separated string
-                - Version('1.2.3')
-            - an iterable
-                - Version([1, 2, 3])
-            - seperate arguments
-                - `Version(1, 2, 3)`
-            - another version class
-                - `Version(Version(1, 2, 3))`
-            - a dictionary
-                - `Version({'minor':2,'major':1,'patch':3})`
-            - keywords
-                - `Version(minor = 2,major = 1, patch = 3)`
-        '''
         try:
             version = (k[0].major, k[0].minor, k[0].patch)
         except (AttributeError, TypeError):
@@ -108,9 +126,6 @@ class Version(object):
         self.patch = int(version[2])
 
     def bump(self, category):
-        '''
-        Bumps the version number depending on the category
-        '''
         setattr(self, category, getattr(self, category) + 1)
         if category == 'major':
             self.minor = 0
@@ -137,9 +152,6 @@ class Version(object):
         return tuple(self) != tuple(other)
 
     def __getitem__(self, index):
-        '''
-        Allows iteration of the version number
-        '''
         if index == 0:
             return self.major
         elif index == 1:
@@ -150,32 +162,11 @@ class Version(object):
             raise IndexError('version index out of range')
 
     def __repr__(self):
-        '''
-        Provides a dot-separated string representation of the version number
-        '''
         return '%i.%i.%i' % (self.major, self.minor, self.patch)
 
 
 class GitVersion(Version):
-    '''A git repository version number'''
-
     def __init__(self, *k, **kw):
-        '''
-        A git version number can be instantiate with:
-
-            - a dot-separated string
-                - Version('1.2.3.ef3aa43d-dirty')
-            - an iterable
-                - Version([1, 2, 3, 'ef3aa43d', True])
-            - seperate arguments
-                - `Version(1, 2, 3, 'ef3aa43d', True)`
-            - another version class
-                - `Version(Version(1, 2, 3, 'ef3aa43d', True))`
-            - a dictionary
-                - `Version({'minor':2,'major':1,'patch':3, 'commit': 'ef3aa43d', 'dirty', True})`
-            - keywords
-                - `Version(minor = 2,major = 1, patch = 3, commit ='ef3aa43d', dirty =True)`
-        '''
         super(GitVersion, self).__init__(*k, **kw)
         try:
             version = (k[0].commit, k[0].dirty)
@@ -210,9 +201,6 @@ class GitVersion(Version):
                                  % self.commit)
 
     def __repr__(self):
-        '''
-        Provides a dot-separated string representation of the version number
-        '''
         string = '%s.%s' % (super(GitVersion, self).__repr__(),
                             self.commit[:8])
         if self.dirty:
@@ -221,9 +209,6 @@ class GitVersion(Version):
 
 
 def find_exe_in_path(filename, path=None):
-    '''
-    Finds an executable in the PATH environment variable
-    '''
     if platform.system() == 'Windows':
         filename += '.exe'
     if path is None:
@@ -598,9 +583,6 @@ def release(category='patch',
             template=changelog_template,
             logger=EmptyLogger(),
             hooks={}):
-    '''
-    Performs the release of a repository on GitHub.
-    '''
     if isinstance(git_executable, list):
         git_executable = git_executable[0]
 
