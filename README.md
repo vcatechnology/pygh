@@ -1,7 +1,8 @@
 pygh
 ====
 
-[![Build Status](https://travis-ci.org/vcatechnology/pygh.svg?branch=master)](https://travis-ci.org/vcatechnology/pygh)
+[![Build Status](https://img.shields.io/travis/vcatechnology/pygh/master.svg)](https://travis-ci.org/vcatechnology/pygh)
+[![Coverage Status](https://img.shields.io/coveralls/vcatechnology/pygh/master.svg)](https://coveralls.io/github/vcatechnology/pygh?branch=master)
 
 A set of GitHub related scripts that can perform certain useful tasks:
 
