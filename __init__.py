@@ -16,7 +16,16 @@ import platform
 import fileinput
 import subprocess
 
-from datetime import datetime, timezone
+from datetime import datetime
+
+try:
+    from datetime import timezone
+except ImportError:
+    try:
+        from pytz import timezone
+    except ImportError:
+        raise ImportError(
+            'Failed to import \'pytz\', run \'pip install pytz\'')
 
 try:
     import requests
