@@ -3,7 +3,6 @@ language: python
 sudo: false
 
 python:
-  - "2.6"
   - "2.7"
   - "3.2"
   - "3.3"
@@ -27,23 +26,39 @@ install:
 
 before_script:
   - mkdir "${BUILD_DIR}"
+  # Export the python version to the shell
+  - eval $(python -c "import sys;
+      print('export PYTHON_MAJOR={0};
+             export PYTHON_MINOR={1};
+             export PYTHON_PATCH={2}'.format(
+        *sys.version.split()[0].split('.')))")
 
 script:
   # Run the unit tests
-  - nosetests --with-coverage --cover-package=pygh
+  - if [ $PYTHON_MAJOR -lt 3 ] || ( [ $PYTHON_MAJOR -eq 3 ] && [ $PYTHON_MINOR -ge 3 ] ); then
+      nosetests --with-coverage --cover-package=pygh;
+    else
+      nosetests;
+    fi
   # Check documentation coverage
-  - make -C ${DOCS_DIR} coverage
-  - test $(sed -n '$=' "${DOCS_COVERAGE}") -eq 2 || (
-      >&2 echo "All APIs should have documentation:" &&
-      >&2 cat "${DOCS_COVERAGE}" &&
-      false
-    )
+  - if [ $PYTHON_MAJOR -lt 3 ] || ( [ $PYTHON_MAJOR -eq 3 ] && [ $PYTHON_MINOR -ge 3 ] ); then
+      make -C ${DOCS_DIR} coverage &&
+      test $(sed -n '$=' "${DOCS_COVERAGE}") -eq 2 || (
+        >&2 echo "All APIs should have documentation:" &&
+        >&2 cat "${DOCS_COVERAGE}" &&
+        false
+      );
+    fi
   # Check style is correct
-  - yapf -d ${PYTHON_FILES} > "${BUILD_DIR}/style.diff" || (
-      >&2 echo "The style is incorrect:" &&
-      >&2 cat "${BUILD_DIR}/style.diff" &&
-      false
-    )
+  - if [ $PYTHON_MAJOR -lt 3 ] || ( [ $PYTHON_MAJOR -eq 3 ] && [ $PYTHON_MINOR -ge 4 ] ); then
+      yapf -d ${PYTHON_FILES} > "${BUILD_DIR}/style.diff" || (
+        >&2 echo "The style is incorrect:" &&
+        >&2 cat "${BUILD_DIR}/style.diff" &&
+        false
+      );
+    fi
 
 after_success:
-  coveralls
+  - if [ $PYTHON_MAJOR -lt 3 ] || ( [ $PYTHON_MAJOR -eq 3 ] && [ $PYTHON_MINOR -ge 3 ] ); then
+      coveralls;
+    fi
