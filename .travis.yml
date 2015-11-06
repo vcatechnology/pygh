@@ -22,14 +22,16 @@ install:
   - pip install --upgrade sphinx
   - pip install --upgrade requests
   - pip install --upgrade pystache
+  - pip install --upgrade coverage
+  - pip install --upgrade coveralls
 
 before_script:
   - mkdir "${BUILD_DIR}"
 
 script:
   # Run the unit tests
-  - nosetests
-  # Check documentation coveage
+  - nosetests --with-coverage --cover-package=pygh
+  # Check documentation coverage
   - make -C ${DOCS_DIR} coverage
   - test $(sed -n '$=' "${DOCS_COVERAGE}") -eq 2 || (
       >&2 echo "All APIs should have documentation:" &&
@@ -42,3 +44,6 @@ script:
       >&2 cat "${BUILD_DIR}/style.diff" &&
       false
     )
+
+after_success:
+  coveralls
