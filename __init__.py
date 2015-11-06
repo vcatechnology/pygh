@@ -378,13 +378,15 @@ def close_milestone(number, repo, token, logger=EmptyLogger()):
     :param int number: the number of the milestone to close
     :param str repo: the GitHub repository to close the milestone on,
         e.g. :code:`vcatechnology/pygh`
-    :param str token: the GitHub API token to use for the request
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
     :param Logger logger: the logging class to use for providing status updates
     :returns: the returned JSON from the request parsed into a python
         :code:`dict`
     :raises HttpApiError: if the request fails
     '''
     logger.debug('Closing milestone #%d for %s' % (number, repo))
+    token = get_api_token(token)
     number = int(number)
     url = 'https://api.github.com/repos/%s/milestones/%d' % (repo, number)
     r = requests.patch(url,
@@ -407,13 +409,15 @@ def get_milestones(repo, token, logger=EmptyLogger()):
 
     :param str repo: the GitHub repository to close the milestone on,
         e.g. :code:`vcatechnology/pygh`
-    :param str token: the GitHub API token to use for the request
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
     :param Logger logger: the logging class to use for providing status updates
     :returns: the returned JSON from the request parsed into a python
         :code:`dict`
     :raises HttpApiError: if the request fails
     '''
     logger.debug('Retrieving milestones for %s' % repo)
+    token = get_api_token(token)
     url = 'https://api.github.com/repos/%s/milestones' % repo
     r = requests.get(url, params={'access_token': token, })
     if r.status_code != 200:
@@ -430,7 +434,8 @@ def get_version_milestone(version, repo, token, logger=EmptyLogger()):
     :param Version version: the version of the milestone to be found
     :param str repo: the GitHub repository to close the milestone on,
         e.g. :code:`vcatechnology/pygh`
-    :param str token: the GitHub API token to use for the request
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
     :returns: the milestone JSON data as a python :code:`dict` or :code:`None`
         if no matching milestone was found
     :raises ValueError: if the :code:`version` parameter is not a
@@ -443,28 +448,37 @@ def get_version_milestone(version, repo, token, logger=EmptyLogger()):
         return [
             m
             for m in milestones
-            if m['title'] == ('v%s' % current_version) and m['state'] == 'open'
+            if m['title'] == ('v%s' % version) and m['state'] == 'open'
         ][0]
     except IndexError:
         return None
 
 
+def get_git_exe():
+    '''
+    Returns the first found git executable in the system path
+
+    :returns: the filesystem location of the git executable
+    '''
+    try:
+        return find_exe_in_path('git')[0]
+    except IndexError:
+        raise ValueError('Failed to find git in system path, is it installed?')
+
+
 def get_latest_git_tag_version(path,
-                               git_executable=find_exe_in_path('git'),
+                               git_executable=get_git_exe(),
                                logger=EmptyLogger()):
     '''
     Returns the latest tagged semantic version for a repository.
 
     :param str path: the path of the repository to find the tag in
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :param Logger logger: the logging class to use for providing status updates
     :returns: a :class:`GitVersion` representing the state of the repository
     :raises ExecuteCommandError: if any of the :code:`git` commands fail
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
-
     logger.debug('Getting latest git tag version')
 
     # Get the head commit
@@ -512,7 +526,7 @@ re_remote_fetch_url = re.compile(
     r'Fetch URL: (?:(?:(git)(?:@))|(?:(https)(?:://)))([^:/]+)[:/]([^/]+/[^.]+)(?:\.git)?')
 
 
-def get_github_repo(path=os.getcwd(), git_executable=find_exe_in_path('git')):
+def get_github_repo(path, git_executable=get_git_exe()):
     '''
     Retrieves the GitHub repository from a local git repository remote string.
     For example, if the remote is :code:`git@github.com:vcatechnology/pygh.git`
@@ -520,13 +534,11 @@ def get_github_repo(path=os.getcwd(), git_executable=find_exe_in_path('git')):
 
     :param str path: the local filesystem location of the git repository to
         inspect
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :returns: the GitHub repository string
     :raises ExecuteCommandError: if any of the :code:`git` commands fail
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
     cmd = [git_executable, 'remote', 'show', '-n', 'origin']
     code, out, err = execute_command(
         cmd,
@@ -545,21 +557,18 @@ def get_github_repo(path=os.getcwd(), git_executable=find_exe_in_path('git')):
     return repo
 
 
-def get_git_version(git_executable=find_exe_in_path('git'),
-                    logger=EmptyLogger()):
+def get_git_version(git_executable=get_git_exe(), logger=EmptyLogger()):
     '''
     Retrieves the version of a :code:`git` executable
 
     :param str path: the local filesystem location of the git repository to
         inspect
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :param Logger logger: the logging class to use for providing status updates
     :returns: a :class:`Version`
     :raises ExecuteCommandError: if the :code:`git` command fails
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
     logger.debug('Getting git version')
     _, out, _ = execute_command([git_executable, '--version'])
     git_version = Version(out.replace('git version ', ''))
@@ -598,30 +607,50 @@ changelog_template = \
     '_None_\n' \
     '{{/pullrequests}}\n'
 
+re_api_token = re.compile(r'^[0-9a-f]{40}$')
 
-def get_closed_issues(repo,
-                      token=os.environ.get('GITHUB_TOKEN', None),
-                      since=None,
-                      logger=EmptyLogger()):
+
+def get_api_token(token='GITHUB_TOKEN'):
+    '''
+    Retrieves a GitHub API from the environment or returns the token given
+
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
+    :returns: the GitHub token
+    :raises ValueError: if the GitHub token is not a valid 40 digit hexidecimal
+        token
+    '''
+    token = os.environ.get(token, token)
+    if not re_api_token.match(token):
+        raise ValueError('Failed to find a valid GitHub token: %s' % token)
+    return token
+
+
+def get_issues(repo,
+               state,
+               since=None,
+               token='GITHUB_TOKEN',
+               logger=EmptyLogger()):
     '''
     Returns the closed issues for a GitHub repository. Useful for building a
     changelog.
 
     :param str repo: the GitHub repository to get the issues for,
         e.g. :code:`vcatechnology/pygh`
-    :param str token: the GitHub API token to use for the request
+    :param str state: either :code:`closed`, :code:`open` or :code:`all`
     :param datetime since: only return issues that have been updated since this
         timestamp
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
     :param Logger logger: the logging class to use for providing status updates
     :returns: the returned JSON from the request parsed into a python
         :code:`dict`
     :raises HttpApiError: if the request fails
     '''
     logger.debug('Getting issues for %s' % (repo))
-    if not token:
-        raise ReleaseError('Must provide a valid GitHub API token')
+    token = get_api_token(token)
     issues = []
-    params = {'state': 'closed', 'sort': 'asc', 'access_token': token, }
+    params = {'state': state, 'sort': 'asc', 'access_token': token, }
     if since:
         since = since.astimezone(timezone.utc)
         params['since'] = since.isoformat()[:19] + 'Z'
@@ -637,11 +666,13 @@ def get_closed_issues(repo,
 
 def create_changelog(current_version,
                      previous_version,
-                     repo,
-                     token=os.environ.get('GITHUB_TOKEN', None),
+                     path,
+                     repo=None,
                      description=None,
-                     date=datetime.utcnow(),
                      template=changelog_template,
+                     token='GITHUB_TOKEN',
+                     git_executable=get_git_exe(),
+                     date=datetime.utcnow(),
                      logger=EmptyLogger()):
     '''
     Creates a changelog markdown entry for a certain version.
@@ -650,17 +681,22 @@ def create_changelog(current_version,
     :param Version previous_version: the last version that was released which is
         is used to retrieved closed issues and pull requests since the last
         release
+    :param str path: the local filesystem location
     :param str repo: the GitHub repository to work against, e.g.
         :code:`vcatechnology/pygh`
-    :param str token: the GitHub API token to use for the request
     :param str description: the description of the release, such as major
         features implemented
-    :param datetime date: the date the release occurred
     :param str template: a mustache template that will be formatted into the
         changelog
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
+    :param datetime date: the date the release occurred
     :param Logger logger: the logging class to use for providing status updates
     :raises HttpApiError: if a GitHub API request fails
     '''
+    repo = repo or get_github_repo(path=path, git_executable=git_executable)
     logger.debug('Creating changelog for %s from %s' % (current_version, repo))
     description = description or 'The v%s release of %s' % (current_version,
                                                             repo.split('/')[1])
@@ -672,10 +708,11 @@ def create_changelog(current_version,
     except ExecuteCommandError:
         since = None
 
-    issues = get_closed_issues(repo=repo,
-                               token=token,
-                               since=since,
-                               logger=logger)
+    issues = get_issues(repo=repo,
+                        state='closed',
+                        since=since,
+                        token=token,
+                        logger=logger)
 
     milestone = get_version_milestone(version=current_version,
                                       repo=repo,
@@ -750,15 +787,15 @@ def write_changelog(path, changelog, logger=EmptyLogger()):
             raise
 
 
-def get_git_root(path, git_executable=find_exe_in_path('git')):
+def get_git_root(path, git_executable=get_git_exe()):
     '''
     Retrieves the root of a git repository if :code:`path` is a filesystem
     location inside it. Can be useful to get relative paths to files inside a
     git repository
 
     :param str path: the filesystem location to inspect
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :param Logger logger: the logging class to use for providing status updates
     :returns: the filesystem path
     :raises ExecuteCommandError: if the :code:`git` command fails
@@ -775,20 +812,18 @@ def get_git_root(path, git_executable=find_exe_in_path('git')):
 
 def commit_file(path,
                 message,
-                git_executable=find_exe_in_path('git'),
+                git_executable=get_git_exe(),
                 logger=EmptyLogger()):
     '''
     Commits a file that is inside a repository
 
     :param str path: the location of the file to commit
     :param str message: the commit message
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :param Logger logger: the logging class to use for providing status updates
     :raises ExecuteCommandError: if the :code:`git` command fails
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
     logger.debug('Commiting %s' % path)
     cwd = get_git_root(path, git_executable=git_executable)
     path = os.path.relpath(path, cwd)
@@ -799,20 +834,16 @@ def commit_file(path,
     logger.info('Committed %s' % path)
 
 
-def get_tag_date(tag,
-                 path=os.getcwd(),
-                 git_executable=find_exe_in_path('git')):
+def get_tag_date(tag, path, git_executable=get_git_exe()):
     '''
     Gets a :code:`datetime` object for a git tag.
 
     :param str tag: the tag name to get the date for
     :param str path: the location of the repository
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :raises ExecuteCommandError: if the :code:`git` command fails
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
     cwd = get_git_root(path, git_executable=git_executable)
     cmd = [git_executable, 'log', '-1', '--format=%ai', tag]
     _, out, _ = execute_command(cmd,
@@ -823,9 +854,9 @@ def get_tag_date(tag,
 
 
 def create_git_version_tag(version,
+                           path,
                            message=None,
-                           path=os.getcwd(),
-                           git_executable=find_exe_in_path('git'),
+                           git_executable=get_git_exe(),
                            logger=EmptyLogger()):
     '''
     Creates a annotated semantic version tag in a git repository
@@ -833,13 +864,11 @@ def create_git_version_tag(version,
     :param Version version: the version to tag
     :param str message: the tag message
     :param str path: the location of the repository
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
     :param Logger logger: the logging class to use for providing status updates
     :raises ExecuteCommandError: if the :code:`git` command fails
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
     if not isinstance(version, Version):
         raise ValueError('must provide a version class')
     version = Version(version)
@@ -854,9 +883,9 @@ def create_git_version_tag(version,
 def create_release(repo,
                    version,
                    description,
-                   token=os.environ.get('GITHUB_TOKEN', None),
+                   path,
+                   token='GITHUB_TOKEN',
                    files=[],
-                   path=os.getcwd(),
                    logger=EmptyLogger()):
     '''
     Creates a GitHub release that attaches the changelog to the tagged version
@@ -867,15 +896,17 @@ def create_release(repo,
     :param Version version: the version to be released
     :param str description: the description of the release, such as major
         features implemented
-    :param str token: the GitHub API token to use for the request
-    :param list files: the files to be attached to the release
     :param str path: the location of the local github repository
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
+    :param list files: the files to be attached to the release
     :param Logger logger: the logging class to use for providing status updates
     :raises HttpApiError: if a GitHub API request fails
     '''
     if not isinstance(version, Version):
         raise ValueError('must provide a version class')
     logger.debug('Creating github release %s' % version)
+    token = get_api_token(token)
     url = 'https://api.github.com/repos/%s/releases' % repo
     r = requests.post(url,
                       params={
@@ -892,18 +923,18 @@ def create_release(repo,
     logger.info('Created GitHub release')
 
 
-def release(category='patch',
-            path=os.getcwd(),
-            git_executable=find_exe_in_path('git'),
-            token=os.environ.get('GITHUB_TOKEN', None),
-            repo=None,
-            date=datetime.utcnow(),
+def release(category,
+            path,
             description=None,
             changelog='CHANGELOG.md',
             version='VERSION',
             template=changelog_template,
-            logger=EmptyLogger(),
-            hooks={}):
+            hooks={},
+            token='GITHUB_TOKEN',
+            git_executable=get_git_exe(),
+            repo=None,
+            date=datetime.utcnow(),
+            logger=EmptyLogger()):
     '''
     Performs a release of a GitHub local repository. This automatically does the
     following steps:
@@ -929,9 +960,10 @@ def release(category='patch',
     :param str category: Must be one of :code:`major`, :code:`minor` or
         :code:`patch`
     :param str path: the path to the local repository to release
-    :param list git_executable: the :code:`git` executable to use for the
-        inspection
-    :param str token: the GitHub API token to use for GitHub API requests
+    :param str git_executable: the filesystem location of the
+        :code:`git` executable to use
+    :token str token: either the environment variable to read the token from or
+        a 40 digit hexidecimal number
     :param str repo: the GitHub repository to close the milestone on,
         e.g. :code:`vcatechnology/pygh`. If set to :code:`None` it will be
         automatically detected from the :code:`origin` remote
@@ -948,9 +980,6 @@ def release(category='patch',
 
             - :code:`changelog`: ran when the changelog has been generated
     '''
-    if isinstance(git_executable, list):
-        git_executable = git_executable[0]
-
     logger.debug('Starting %r release' % category)
 
     git_version = get_git_version(git_executable=git_executable, logger=logger)
@@ -980,18 +1009,18 @@ def release(category='patch',
                                       repo=repo,
                                       token=token,
                                       logger=logger)
-    try:
+    if milestone:
         open_issues = milestone['open_issues']
         if open_issues:
             raise ReleaseError('The v%s milestone has %d open issues' %
                                (current_version, open_issues))
-    except KeyError:
-        pass
 
     changelog_data = create_changelog(description=description,
+                                      path=path,
                                       repo=repo,
                                       date=date,
                                       token=token,
+                                      git_executable=git_executable,
                                       current_version=current_version,
                                       previous_version=previous_version,
                                       template=template,
