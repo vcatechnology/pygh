@@ -274,36 +274,48 @@ class GitVersion(Version):
     def __init__(self, *k, **kw):
         super(GitVersion, self).__init__(*k, **kw)
         try:
-            version = (k[0].commit, k[0].dirty)
+            try:
+                version = (k[0].commit, k[0].dirty)
+            except AttributeError:
+                version = (k[0].commit, )
         except (AttributeError, TypeError):
             try:
-                version = (kw['commit'], kw['dirty'])
+                try:
+                    version = (kw['commit'], kw['dirty'])
+                except KeyError:
+                    version = (kw['commit'], )
             except (KeyError, TypeError):
                 try:
-                    version = (k[0]['commit'], k[0]['dirty'])
+                    try:
+                        version = (k[0]['commit'], k[0]['dirty'])
+                    except KeyError:
+                        version = (k[0]['commit'], )
                 except (KeyError, TypeError):
                     if isinstance(k[0], str):
                         version = k[0].split('.')[3]
                     else:
                         try:
-                            version = (k[0][3], k[0][4])
+                            try:
+                                version = (k[0][3], k[0][4])
+                            except IndexError:
+                                version = (k[0][3], )
                         except (IndexError, TypeError):
                             version = k[3:]
-            self.commit = str(version[0])
+        self.commit = str(version[0])
+        try:
+            self.dirty = bool(version[1])
+        except:
             try:
-                self.dirty = bool(version[1])
+                split = self.commit.split('-')
+                self.dirty = (split[1] == 'dirty')
+                self.commit = split[0]
             except:
-                try:
-                    split = self.commit.split('-')
-                    self.dirty = (split[1] == 'dirty')
-                    self.commit = split[0]
-                except:
-                    self.dirty = False
-            try:
-                int(self.commit, 16)
-            except ValueError:
-                raise ValueError('The git commit string is not hexidecimal: %s'
-                                 % self.commit)
+                self.dirty = False
+        try:
+            int(self.commit, 16)
+        except ValueError:
+            raise ValueError('The git commit string is not hexidecimal: %s' %
+                             self.commit)
 
     def __repr__(self):
         string = '%s.%s' % (super(GitVersion, self).__repr__(),
